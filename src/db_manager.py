@@ -12,11 +12,29 @@ def get_db_connection():
 def load_data_to_db(conn, df):
     """
     Pandas DataFrame'ini SQLite tablosuna yazar.
-    Tablo adı sabit: 'uploaded_data'
+    Manuel DROP işlemi ile kilitlenme sorunlarını çözer.
     """
     try:
-        df.to_sql('uploaded_data', conn, index=False, if_exists='replace')
+        cursor = conn.cursor()
+
+        # Eğer tablo silinmediyse manuel sil
+        cursor.execute("DROP TABLE IF EXISTS uploaded_data")
+        conn.commit()  # İşlemi onayla
+
+        # Kolon İsimlerini Temizle
+        df.columns = df.columns.str.strip().str.replace(' ', '_').str.replace(r'[^\w]', '', regex=True)
+
+        # Veriyi Yükle
+        # chunksize=500, büyük verilerde hata almayı engellemesi için
+        df.to_sql(
+            'uploaded_data',
+            conn,
+            index=False,
+            if_exists='replace',
+            chunksize=500
+        )
         return True
+
     except Exception as e:
         print(f"Veri yükleme hatası: {e}")
         return False
